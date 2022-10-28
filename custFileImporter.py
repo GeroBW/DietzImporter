@@ -54,14 +54,15 @@ def custFileImporter(path: str):
 
 
 def importCsv(path, skipInit: bool = False):
-    preprocessCsv(path)
+    # preprocessCsv(path)
     file = pd.read_csv(path,
                        decimal='.',
-                       delim_whitespace=True,
+                       # delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,
                        ).fillna('')
+    file = file.apply(lambda x: x.str.replace(',','.'))
     if skipInit:
         mapping = dict(zip(range(7), columnGuesser(file)))
         return file.rename(columns=mapping)
@@ -77,12 +78,12 @@ def importXlsx(path, skipInit: bool = False):
     # targetPath = pathlib.Path(path)
     # targetPath = targetPath.rename(targetPath.with_suffix('.csv'))
     targetPath = "in/preprocessed.csv"
-    read_file.to_csv(targetPath, index=False, header=False, sep=' ')
+    read_file.to_csv(targetPath, index=False, header=False, sep=',')
     return importCsv(targetPath, skipInit)
 
 
 def importEagle(path, skipInit: bool = False):
-    preprocessCsv(path)
+    preprocessEagle(path)
     global columnNames
     file = pd.read_csv("exampleIn/preprocessed.csv",
                        decimal='.',
@@ -154,7 +155,7 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
     return res
 
 
-def preprocessCsv(path):
+def preprocessEagle(path):
     data = ""
     ##todo ignore non data columns
     with open(path, encoding="ISO-8859-1", ) as file:
