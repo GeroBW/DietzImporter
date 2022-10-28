@@ -57,7 +57,7 @@ def importCsv(path, skipInit: bool = False):
     preprocessCsv(path)
     file = pd.read_csv(path,
                        decimal='.',
-                       # delim_whitespace=True,
+                       delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,

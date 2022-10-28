@@ -25,11 +25,11 @@ def main():
             if fnameT == files[-1]:
                 path = os.path.join("out", 'processedProjects/', pathlib.PurePath(root).name)
                 shutil.copytree(root, path, dirs_exist_ok=True)
-                shutil.rmtree(root)
+                # shutil.rmtree(root)
 
 
 def extractData(src: str, dest: str):
-    shutil.rmtree(dest)
+    # shutil.rmtree(dest)
     dirAcc = set()
     for root, dirs, files in os.walk(src):
         for name in files:
