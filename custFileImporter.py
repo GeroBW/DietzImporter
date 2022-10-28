@@ -85,7 +85,7 @@ def importXlsx(path, skipInit: bool = False):
 def importEagle(path, skipInit: bool = False):
     preprocessEagle(path)
     global columnNames
-    file = pd.read_csv("exampleIn/preprocessed.csv",
+    file = pd.read_csv("in/preprocessed.csv",
                        decimal='.',
                        delim_whitespace=True,
                        index_col=False,
@@ -162,12 +162,12 @@ def preprocessEagle(path):
         data = file.read() \
             .replace(",", ".") \
             .replace("µ", "u")
-    with open("exampleIn/preprocessed.csv", "w+") as file:
+    with open("in/preprocessed.csv", "w+") as file:
         lines = data.splitlines()
         for i, line in enumerate(lines):
             line = ' '.join(line.split())
             line = (' '.join(line.split(' ')[:6]) + ' ' + '_'.join(line.split(' ')[6:])).strip()
-            if (len(line.split(' ')) <= 6):
+            if (len(line.split(' ')) <= 7):
                 line += ' -'
             lines[i] = line
         file.write('\n'.join(lines))

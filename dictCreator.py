@@ -6,6 +6,7 @@ import pandas as pd
 import custFileImporter
 import warnings
 
+
 def main():
     global dic
     extractData('samplefiles_gero', 'progFiles')
@@ -16,7 +17,7 @@ def main():
                     for fnameS in files:
                         if fnameS.endswith('.mnb') or fnameS.endswith('.mnt'):
                             try:
-                                src = custFileImporter.importEagle(os.path.join(root, fnameS),  skipInit=True)
+                                src = custFileImporter.importEagle(os.path.join(root, fnameS), skipInit=True)
                                 trns = custFileImporter.importXlsx(os.path.join(root, fnameT), skipInit=True)
                                 createDict(src, trns, pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx'))
                             except:
@@ -53,40 +54,47 @@ def isType1(dir):
 
 
 def createDict(src: pd.DataFrame, trns: pd.DataFrame, dictionaryOld: pd.DataFrame):
-    matched = pd.merge(left=src[['R', 'V', 'T', 'Description']], right=trns[['R', 'T', 'Description']], on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
-    duplicates = matched[matched.duplicated(subset=['T_x'], keep=False)]
-    while len(duplicates) > 0:
-        print("Found duplicate in this projects translations.")
-        key = duplicates['T_x'].unique()[0]
-        thisDupl = duplicates[duplicates['T_x'] == key]
-        print(thisDupl)
-        try:
-            userInput = input("""
-        Which one would you like to keep?
-        Please enter row Index (first column) or delete all (d).
-        """, )
-            if(userInput in "d"):
-                print("deleting all")
-                matched = matched.drop(list(thisDupl.index))
-
-            index = int(userInput)
-            if index in thisDupl.index:
-                print("deleting row:", index)
-                matched = matched.drop([index])
-            else:
-                print(index, " is not a valid index")
-        except:
-            print(f"{userInput}Is not an int or 'd'!")
-
-        duplicates = matched[matched.duplicated(subset=['T_x'], keep=False)]
+    matched = pd.merge(left=src[['R', 'V', 'T', 'Description']], right=trns[['R', 'T', 'Description']],
+                       on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
+    matched = matched.rename(columns={'T_x': 'T_source', 'T_y': 'T_target'})[['T_source', 'T_target']]
+    matched = matched[matched.apply(lambda x: "n.b." not in x['T_target'] and "hand" not in x['T_target'] and "Hand" not in x['T_target'], axis = 1)]
+    matched = removeConflicts(matched)
 
     ### saving file
-    dictNewLines = matched.rename(columns={'T_x': 'T_source', 'T_y': 'T_target'})[['T_source', 'T_target']]
-    dictionaryNew = pd.concat([dictionaryOld, dictNewLines]).drop_duplicates()
+    dictionaryNew = pd.concat([dictionaryOld, matched]).drop_duplicates()
+    dictionaryNew = removeConflicts(dictionaryNew)
 
     print("Saving the following file\n:", dictionaryNew)
     dictionaryNew[['T_source', 'T_target']].to_excel('bibliothek/bauform_bibliothek.xlsx', index=False)
 
+
+def removeConflicts(matched):
+    duplicates = matched[matched.duplicated(subset=['T_source'], keep=False)]
+    while len(duplicates) > 0:
+        print("Found duplicate in this projects translations.")
+        key = duplicates['T_source'].unique()[0]
+        thisDupl = duplicates[duplicates['T_source'] == key]
+        print(thisDupl)
+        # userInput = input("""
+        # Which one would you like to keep?
+        # Please enter row Index (first column) or delete all (d).
+        # """, )
+        userInput = 'd'
+        if (userInput in "d"):
+            print("deleting all")
+            matched = matched.drop(list(thisDupl.index))
+        else:
+            try:
+                index = int(userInput)
+                if index in thisDupl.index:
+                    print("deleting row:", index)
+                    matched = matched.drop([index])
+                else:
+                    print(index, " is not a valid index")
+            except:
+                print(f"{userInput}Is not an int or 'd'!")
+        duplicates = matched[matched.duplicated(subset=['T_source'], keep=False)]
+    return matched
 
 if __name__ == "__main__":
     main()
