@@ -6,7 +6,11 @@ import pandas as pd
 import custFileImporter
 import warnings
 
-
+if os.path.exists(r'bibliothek/bauform_bibliothek.xlsx'):
+    dic = pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx')
+else:
+    dic = pd.DataFrame(columns=["T_source","T_target", "R_type"])
+    dic.to_excel(r'bibliothek/bauform_bibliothek.xlsx', index=False)
 def main():
     global dic
     extractData('samplefiles_gero', 'progFiles')
@@ -56,20 +60,21 @@ def isType1(dir):
 def createDict(src: pd.DataFrame, trns: pd.DataFrame, dictionaryOld: pd.DataFrame):
     matched = pd.merge(left=src[['R', 'V', 'T', 'Description']], right=trns[['R', 'T', 'Description']],
                        on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
-    matched = matched.rename(columns={'T_x': 'T_source', 'T_y': 'T_target'})[['T_source', 'T_target']]
+    matched = matched.rename(columns={'T_x': 'T_source', 'T_y': 'T_target'})
     matched = matched[matched.apply(lambda x: "n.b." not in x['T_target'] and "hand" not in x['T_target'] and "Hand" not in x['T_target'], axis = 1)]
-    matched = removeConflicts(matched)
-
+    matched["R_type"] = matched['R'].str.replace('\d+', '').apply(lambda x: x if x == 'C' or x =='R' else '')
+    matched = removeConflicts(matched)[['R_type','T_source', 'T_target']]
+    newlines = matched[['R_type','T_source', 'T_target']]
     ### saving file
-    dictionaryNew = pd.concat([dictionaryOld, matched]).drop_duplicates()
+    dictionaryNew = pd.concat([dictionaryOld, newlines]).drop_duplicates()
     dictionaryNew = removeConflicts(dictionaryNew)
 
     print("Saving the following file\n:", dictionaryNew)
-    dictionaryNew[['T_source', 'T_target']].to_excel('bibliothek/bauform_bibliothek.xlsx', index=False)
+    dictionaryNew.to_excel('bibliothek/bauform_bibliothek.xlsx', index=False)
 
 
 def removeConflicts(matched):
-    duplicates = matched[matched.duplicated(subset=['T_source'], keep=False)]
+    duplicates = matched[matched.duplicated(subset=['T_source','R_type'], keep=False)]
     while len(duplicates) > 0:
         print("Found duplicate in this projects translations.")
         key = duplicates['T_source'].unique()[0]
@@ -93,7 +98,7 @@ def removeConflicts(matched):
                     print(index, " is not a valid index")
             except:
                 print(f"{userInput}Is not an int or 'd'!")
-        duplicates = matched[matched.duplicated(subset=['T_source'], keep=False)]
+        duplicates = matched[matched.duplicated(subset=['T_source','R_type'], keep=False)]
     return matched
 
 if __name__ == "__main__":

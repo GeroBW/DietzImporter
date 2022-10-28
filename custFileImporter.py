@@ -10,7 +10,6 @@ import dictCreator
 from tkinter import filedialog as fd
 
 pandas.set_option('display.max_columns', None)
-
 dic = pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx')
 columnNames = ['R', 'X', 'Y', 'D', 'V', 'T', 'Description']
 
@@ -293,14 +292,29 @@ def handleNotTranslated(translated: pd.DataFrame):
 
 
 def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
-    # global dic
-    bauformDictionary = dict(zip(customDic.T_source, customDic.T_target))
-    t_target = cf['T'].map(bauformDictionary)
+    global dic
+    cf['R_type'] = cf['R'].str.replace('\d+', '').apply(lambda x: x if x == 'C' or x =='R' else '')
+    test = pd.merge(cf, dic,  how='left',left_on=['T'], right_on=['T_source'])
+    test = test.drop_duplicates(subset=['R', 'T_source', 'T_target'])
+
+    t_target = cf.apply(joinRow, axis=1, result_type='reduce')
+    # t_target = cf['T']
     if 'T_target' in cf.columns:
         cf['T_target'] = t_target
     else:
         cf.insert(cf.columns.get_loc("T") + 1, "T_target", t_target)
     return cf
+
+def joinRow(row):
+    matched_parts = dic[dic['T_source'] == row['T']]
+    if len(matched_parts) == 1: return matched_parts['T_target'].item()
+    print("found conflicts:")
+    print(matched_parts)
+    if row['R_type']:
+        res = matched_parts[matched_parts['R_type'] == row['R_type']]
+        if len(res)==1: return res['T_target'].item()
+    return None
+
 
 
 def createBOM(df: pd.DataFrame):
