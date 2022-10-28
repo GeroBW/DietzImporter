@@ -216,8 +216,7 @@ def handleNotTranslated(translated: pd.DataFrame):
             if q == 'q':
                 break
     dic = pd.concat([dic, newEntries])
-    translated = mapFile(translated, pd.concat([tmpDic, dic]))[
-        ['R', 'X', 'Y', 'D', 'V', 'T', 'T_target', 'Description']]
+    translated = mapFile(translated, pd.concat([tmpDic, dic]))
     return translated, tmpDic
 
 
@@ -225,7 +224,10 @@ def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
     # global dic
     bauformDictionary = dict(zip(customDic.T_source, customDic.T_target))
     t_target = cf['T'].map(bauformDictionary)
-    cf.insert(cf.columns == 'T', "T_target", t_target)
+    if 'T_target' in cf.columns:
+        cf['T_target'] = t_target
+    else:
+        cf.insert(cf.columns.get_loc("T"), "T_target", t_target)
     return cf
 
 
