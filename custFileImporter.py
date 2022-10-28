@@ -20,7 +20,7 @@ def main():
         for fname in files:
             path = os.path.join(root, fname)
             _, ext = os.path.splitext(path)
-            if ext in ['.mnt','.mnb','.csv', '.txt', '.xlsx']:
+            if ext in ['.mnt', '.mnb', '.csv', '.txt', '.xlsx']:
                 print(f'importing {path}')
                 bom, res, tmpDic = custFileImporter(path)
 
@@ -45,7 +45,7 @@ def custFileImporter(path: str):
     _, ext = os.path.splitext(path)
     if ext == '.mnt' or ext == '.mnb':
         customerFile = importEagle(path)
-    elif ext == '.csv' or ext =='.txt':
+    elif ext == '.csv' or ext == '.txt':
         customerFile = importCsv(path)
     elif ext == '.xlsx':
         customerFile = importXlsx(path)
@@ -58,10 +58,11 @@ def custFileImporter(path: str):
 
 
 def importCsv(path, skipInit: bool = False):
-    preprocessEagle(path)
-    file = pd.read_csv("pre/preprocessed.csv",
+    tmp = "pre/preprocessed.csv"
+    replaceMu(path, tmp)
+    file = pd.read_csv(tmp,
                        decimal='.',
-                       delim_whitespace=True,
+                       # delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,
@@ -83,7 +84,19 @@ def importXlsx(path, skipInit: bool = False):
     # targetPath = targetPath.rename(targetPath.with_suffix('.csv'))
     targetPath = "pre/preprocessed.csv"
     read_file.to_csv(targetPath, index=False, header=False, sep=' ')
-    return importCsv(targetPath, skipInit)
+    preprocessEagle(targetPath)
+    file = pd.read_csv("pre/preprocessed.csv",
+                       decimal='.',
+                       delim_whitespace=True,
+                       index_col=False,
+                       header=None,
+                       verbose=True,
+                       ).fillna('')
+    if skipInit:
+        mapping = dict(zip(range(7), columnGuesser(file)))
+        return file.rename(columns=mapping)
+    else:
+        return initTable(file, path, columnGuess=columnGuesser(file))
 
 
 def importEagle(path, skipInit: bool = False):
@@ -126,15 +139,41 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
 
     print(res.head())
     userInput = input(
-    "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2)")
+        "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2)")
     if userInput in "yY":
         return res
     if userInput == "1":
         return res.iloc[1:]
     if userInput == "3":
-        res = res.iloc[1:]
-
+        df = df.iloc[1:]
+    res = df
     print(f"initializing column names for {path}")
+    print("Please specify columns that should be deleted by passing the corresponding column index")
+    while True:
+        print(res.head())
+        userInput = input("Delete column (i) or done(d):")
+        if userInput in "dD":
+            break
+        else:
+            try:
+                userInput = int(userInput)
+                if userInput in res.columns:
+                    if (input(f"Confirm deleting column {userInput} (y)") in "yY"):
+                        res = res.drop(userInput, axis=1)
+            except:
+                print("invalid entry")
+                continue
+
+    targetPath = "pre/preprocessed.csv"
+    res.to_csv(targetPath, index=False, header=False, sep=' ')
+    concatExcessColumns(targetPath, targetPath)
+    res = pd.read_csv(targetPath,
+                       decimal='.',
+                       delim_whitespace=True,
+                       index_col=False,
+                       header=None,
+                       verbose=True,
+                       ).fillna('')
     while True:
         print(res.head())
         print("Please specify column order by passing the corresponding column index")
@@ -167,6 +206,32 @@ def preprocessEagle(path):
             .replace(",", ".") \
             .replace("µ", "u")
     with open("pre/preprocessed.csv", "w+") as file:
+        lines = data.splitlines()
+        for i, line in enumerate(lines):
+            line = ' '.join(line.split())
+            line = (' '.join(line.split(' ')[:6]) + ' ' + '_'.join(line.split(' ')[6:])).strip()
+            if (len(line.split(' ')) <= 6):
+                line += ' -'
+            lines[i] = line
+        file.write('\n'.join(lines))
+
+
+def replaceMu(path, dest):
+    data = ""
+    ##todo ignore non data columns
+    with open(path, encoding="ISO-8859-1", ) as file:
+        data = file.read() \
+            .replace(",", ".") \
+            .replace("µ", "u")
+    with open(dest, "w+") as file:
+        file.write(data)
+    return dest
+
+
+def concatExcessColumns(path, dest):
+    with open(path, encoding="ISO-8859-1", ) as file:
+        data = file.read()
+    with open(dest, "w+") as file:
         lines = data.splitlines()
         for i, line in enumerate(lines):
             line = ' '.join(line.split())
@@ -232,7 +297,7 @@ def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
     if 'T_target' in cf.columns:
         cf['T_target'] = t_target
     else:
-        cf.insert(cf.columns.get_loc("T")+1, "T_target", t_target)
+        cf.insert(cf.columns.get_loc("T") + 1, "T_target", t_target)
     return cf
 
 
