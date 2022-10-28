@@ -2,6 +2,7 @@ import csv
 import os.path
 import pathlib
 import sys
+import warnings
 
 import pandas
 import pandas as pd
@@ -18,20 +19,23 @@ def main():
     for root, dirs, files in os.walk('in'):
         for fname in files:
             path = os.path.join(root, fname)
-            print(f'importing {path}')
-            bom, res, tmpDic = custFileImporter(path)
+            _, ext = os.path.splitext(path)
+            if ext in ['.mnt','.mnb','.csv', '.txt', '.xlsx']:
+                print(f'importing {path}')
+                bom, res, tmpDic = custFileImporter(path)
 
-            basename, ext = os.path.splitext(path)
-            basename = os.path.basename(os.path.normpath(basename))
-            if not os.path.exists(f'out/{basename}'):
-                os.mkdir(f'out/{basename}')
-            if not os.path.exists(f'bibliothek/{basename}'):
-                os.mkdir(f'bibliothek/{basename}')
-
-            bom.to_excel(f"out/{basename}/{basename}_{ext}_real_BOM.xlsx")
-            res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv")
-            tmpDic.to_excel(
-                f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
+                basename, ext = os.path.splitext(path)
+                basename = os.path.basename(os.path.normpath(basename))
+                if not os.path.exists(f'out/{basename}'):
+                    os.mkdir(f'out/{basename}')
+                if not os.path.exists(f'bibliothek/{basename}'):
+                    os.mkdir(f'bibliothek/{basename}')
+                bom.to_excel(f"out/{basename}/{basename}_{ext}_real_BOM.xlsx")
+                res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv")
+                tmpDic.to_excel(
+                    f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
+            else:
+                print(f'File type not supported.: {ext}')
 
     # save updated dictionary
     dic.to_excel("bibliothek/bauform_bibliothek.xlsx")
@@ -41,7 +45,7 @@ def custFileImporter(path: str):
     _, ext = os.path.splitext(path)
     if ext == '.mnt' or ext == '.mnb':
         customerFile = importEagle(path)
-    elif ext == '.csv':
+    elif ext == '.csv' or ext =='.txt':
         customerFile = importCsv(path)
     elif ext == '.xlsx':
         customerFile = importXlsx(path)
