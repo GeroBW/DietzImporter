@@ -32,6 +32,8 @@ def main():
                     os.mkdir(f'bibliothek/{basename}')
                 bom.to_excel(f"out/{basename}/{basename}_{ext}_real_BOM.xlsx")
                 res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv")
+                res.to_excel(f"out/{basename}/{basename}_{ext}_real.xlsx")
+
                 tmpDic.to_excel(
                     f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
             else:
