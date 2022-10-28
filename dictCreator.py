@@ -16,7 +16,7 @@ def main():
                     for fnameS in files:
                         if fnameS.endswith('.mnb') or fnameS.endswith('.mnt'):
                             try:
-                                src = custFileImporter.importEagle(os.path.join(root, fnameS))
+                                src = custFileImporter.importEagle(os.path.join(root, fnameS),  skipInit=True)
                                 trns = custFileImporter.importXlsx(os.path.join(root, fnameT), skipInit=True)
                                 createDict(src, trns, pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx'))
                             except:
@@ -53,7 +53,7 @@ def isType1(dir):
 
 
 def createDict(src: pd.DataFrame, trns: pd.DataFrame, dictionaryOld: pd.DataFrame):
-    matched = pd.merge(left=src[['R', 'V', 'T', 'Description']], right=trns[['R', 'V', 'T', 'Description']], on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
+    matched = pd.merge(left=src[['R', 'V', 'T', 'Description']], right=trns[['R', 'T', 'Description']], on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
     duplicates = matched[matched.duplicated(subset=['T_x'], keep=False)]
     while len(duplicates) > 0:
         print("Found duplicate in this projects translations.")
@@ -67,6 +67,7 @@ def createDict(src: pd.DataFrame, trns: pd.DataFrame, dictionaryOld: pd.DataFram
         """, )
             if(userInput in "d"):
                 print("deleting all")
+                matched = matched.drop(list(thisDupl.index))
 
             index = int(userInput)
             if index in thisDupl.index:

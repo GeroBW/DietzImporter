@@ -3,26 +3,35 @@ import os.path
 import pathlib
 import sys
 
+import pandas
 import pandas as pd
 import dictCreator
 from tkinter import filedialog as fd
+
+pandas.set_option('display.max_columns', None)
 
 dic = pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx')
 columnNames = ['R', 'X', 'Y', 'D', 'V', 'T', 'Description']
 
 
 def main():
-    custFileImporter("progFiles/Type1/Air_PFC_Integ_a2/Air_PFC_Integ_a2.mnt")
-    for root, dirs, files in os.walk('progFiles/Type1'):
+    for root, dirs, files in os.walk('in'):
         for fname in files:
-            if fname.endswith('.mnb') or fname.endswith('.mnt'):
-                path = os.path.join(root, fname)
-                print(path)
-                bom, res, tmpDic = custFileImporter(path)
+            path = os.path.join(root, fname)
+            print(f'importing {path}')
+            bom, res, tmpDic = custFileImporter(path)
 
-    # bom.to_excel("out/processedFileBOM.xlsx")
-    # res.to_csv("out/processedFile_real.csv")
-    # tmpDic.to_excel("out/tmpDic.xlsx")
+            basename, ext = os.path.splitext(path)
+            basename = os.path.basename(os.path.normpath(basename))
+            if not os.path.exists(f'out/{basename}'):
+                os.mkdir(f'out/{basename}')
+            if not os.path.exists(f'bibliothek/{basename}'):
+                os.mkdir(f'bibliothek/{basename}')
+
+            bom.to_excel(f"out/{basename}/{basename}_real_BOM.xlsx")
+            res.to_csv(f"out/{basename}/{basename}_real.csv")
+            tmpDic.to_excel(
+                f"bibliothek/{basename}/{basename}_tmpDic.xlsx")
 
     # save updated dictionary
     dic.to_excel("bibliothek/bauform_bibliothek.xlsx")
@@ -34,6 +43,8 @@ def custFileImporter(path: str):
         customerFile = importEagle(path)
     elif ext == '.csv':
         customerFile = importCsv(path)
+    elif ext == '.xlsx':
+        customerFile = importXlsx(path)
     else:
         sys.exit(f'File type not supported.: {ext}')
 
@@ -44,18 +55,18 @@ def custFileImporter(path: str):
 
 def importCsv(path, skipInit: bool = False):
     preprocessCsv(path)
-    file = pd.read_csv("in/preprocessed.csv",
+    file = pd.read_csv(path,
                        decimal='.',
-                       delim_whitespace=True,
+                       # delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,
                        ).fillna('')
     if skipInit:
-        mapping = dict(zip(range(7), ['R', 'V', 'T', 'X', 'Y', 'D', 'Description']))
+        mapping = dict(zip(range(7), columnGuesser(file)))
         return file.rename(columns=mapping)
     else:
-        return initTable(file, path)
+        return initTable(file, path, columnGuess=columnGuesser(file))
 
 
 def importXlsx(path, skipInit: bool = False):
@@ -73,22 +84,44 @@ def importXlsx(path, skipInit: bool = False):
 def importEagle(path, skipInit: bool = False):
     preprocessCsv(path)
     global columnNames
-    file = pd.read_csv("in/preprocessed.csv",
+    file = pd.read_csv("exampleIn/preprocessed.csv",
                        decimal='.',
                        delim_whitespace=True,
                        index_col=False,
                        verbose=True,
                        header=None
                        ).fillna('')
-    return initTable(file, path)
+    if skipInit:
+        mapping = dict(zip(range(7), columnGuesser(file)))
+        return file.rename(columns=mapping)
+    else:
+        return initTable(file, path, columnGuess=columnGuesser(file))
 
 
-def initTable(df: pd.DataFrame, path: str):
-    mapping = dict(zip(range(7), ['R', 'V', 'T', 'X', 'Y', 'D', 'Description']))
-    res = df.rename(columns=mapping)
+def columnGuesser(df: pd.DataFrame):
+    numberColumns = ["X", "Y", "D"]
+    otherColumns = ["R", "V", "T", "Description"]
+    columnGuess = []
+    try:
+        for type in df.dtypes:
+            if type.kind in 'iufc':
+                columnGuess.append(numberColumns.pop(0))
+            else:
+                columnGuess.append(otherColumns.pop(0))
+        return columnGuess
+    except:
+        return None
+
+
+def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
+    res = df
+    if columnGuess:
+        mapping = dict(zip(range(7), columnGuess))
+        res = df.rename(columns=mapping)
+
     print(res.head())
     userInput = input(
-        "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2)")
+    "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2)")
     if userInput in "yY":
         return res
     if userInput == "1":
@@ -98,11 +131,10 @@ def initTable(df: pd.DataFrame, path: str):
 
     print(f"initializing column names for {path}")
     while True:
-        print(df.head())
+        print(res.head())
         print("Please specify column order by passing the corresponding column index")
         mapping = dict()
-        mapping[6] = "Description"
-        for name in ['R', 'V', 'T']:
+        for name in ['R', 'V', 'T', "Description"]:
             while True:
                 try:
                     userInput = int(input(f"{name}:"))
@@ -114,7 +146,7 @@ def initTable(df: pd.DataFrame, path: str):
                     break
                 else:
                     print(f"column already assigned to {mapping[userInput]}")
-        res = df.rename(columns=mapping)
+        res = res.rename(columns=mapping)
         print(f"this results in the following mapping:")
         print(mapping)
         if (input("Correct? (y)") in "yY"):
@@ -129,7 +161,7 @@ def preprocessCsv(path):
         data = file.read() \
             .replace(",", ".") \
             .replace("µ", "u")
-    with open("in/preprocessed.csv", "w+") as file:
+    with open("exampleIn/preprocessed.csv", "w+") as file:
         lines = data.splitlines()
         for i, line in enumerate(lines):
             line = ' '.join(line.split())
@@ -146,13 +178,14 @@ def translateFile(cf: pd.DataFrame):
     return translated, tmpDic
 
 
-def handleNotTranslated(mapped: pd.DataFrame):
+def handleNotTranslated(translated: pd.DataFrame):
     global dic
     tmpDic = pd.DataFrame(columns=['T_source', 'T_target'])
     newEntries = pd.DataFrame(columns=['T_source', 'T_target'])
 
     noMatch = \
-        mapped[mapped.T_target.isnull()][['V', 'T', 'Description']].drop_duplicates().groupby('T', as_index=False).agg(
+        translated[translated.T_target.isnull()][['V', 'T', 'Description']].drop_duplicates().groupby('T',
+                                                                                                      as_index=False).agg(
             list)[['V', 'T', 'Description']]
     noMatch["Description"] = noMatch["Description"].map(lambda x: ', '.join(set(x)))
     print("No translation found for the following parts:")
@@ -183,14 +216,16 @@ def handleNotTranslated(mapped: pd.DataFrame):
             if q == 'q':
                 break
     dic = pd.concat([dic, newEntries])
-    mapped = mapFile(mapped, pd.concat([tmpDic, dic]))
-    return mapped, tmpDic
+    translated = mapFile(translated, pd.concat([tmpDic, dic]))[
+        ['R', 'X', 'Y', 'D', 'V', 'T', 'T_target', 'Description']]
+    return translated, tmpDic
 
 
 def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
     # global dic
     bauformDictionary = dict(zip(customDic.T_source, customDic.T_target))
-    cf["T_target"] = cf['T'].map(bauformDictionary)
+    t_target = cf['T'].map(bauformDictionary)
+    cf.insert(cf.columns == 'T', "T_target", t_target)
     return cf
 
 
