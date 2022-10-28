@@ -28,10 +28,10 @@ def main():
             if not os.path.exists(f'bibliothek/{basename}'):
                 os.mkdir(f'bibliothek/{basename}')
 
-            bom.to_excel(f"out/{basename}/{basename}_real_BOM.xlsx")
-            res.to_csv(f"out/{basename}/{basename}_real.csv")
+            bom.to_excel(f"out/{basename}/{basename}_{ext}_real_BOM.xlsx")
+            res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv")
             tmpDic.to_excel(
-                f"bibliothek/{basename}/{basename}_tmpDic.xlsx")
+                f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
 
     # save updated dictionary
     dic.to_excel("bibliothek/bauform_bibliothek.xlsx")
@@ -54,15 +54,15 @@ def custFileImporter(path: str):
 
 
 def importCsv(path, skipInit: bool = False):
-    # preprocessCsv(path)
-    file = pd.read_csv(path,
+    preprocessEagle(path)
+    file = pd.read_csv("pre/preprocessed.csv",
                        decimal='.',
-                       # delim_whitespace=True,
+                       delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,
                        ).fillna('')
-    file = file.apply(lambda x: x.str.replace(',','.'))
+    # file = file.apply(lambda x: x.str.replace(',','.'))
     if skipInit:
         mapping = dict(zip(range(7), columnGuesser(file)))
         return file.rename(columns=mapping)
@@ -77,15 +77,15 @@ def importXlsx(path, skipInit: bool = False):
 
     # targetPath = pathlib.Path(path)
     # targetPath = targetPath.rename(targetPath.with_suffix('.csv'))
-    targetPath = "in/preprocessed.csv"
-    read_file.to_csv(targetPath, index=False, header=False, sep=',')
+    targetPath = "pre/preprocessed.csv"
+    read_file.to_csv(targetPath, index=False, header=False, sep=' ')
     return importCsv(targetPath, skipInit)
 
 
 def importEagle(path, skipInit: bool = False):
     preprocessEagle(path)
     global columnNames
-    file = pd.read_csv("in/preprocessed.csv",
+    file = pd.read_csv("pre/preprocessed.csv",
                        decimal='.',
                        delim_whitespace=True,
                        index_col=False,
@@ -162,12 +162,12 @@ def preprocessEagle(path):
         data = file.read() \
             .replace(",", ".") \
             .replace("µ", "u")
-    with open("in/preprocessed.csv", "w+") as file:
+    with open("pre/preprocessed.csv", "w+") as file:
         lines = data.splitlines()
         for i, line in enumerate(lines):
             line = ' '.join(line.split())
             line = (' '.join(line.split(' ')[:6]) + ' ' + '_'.join(line.split(' ')[6:])).strip()
-            if (len(line.split(' ')) <= 7):
+            if (len(line.split(' ')) <= 6):
                 line += ' -'
             lines[i] = line
         file.write('\n'.join(lines))
@@ -228,7 +228,7 @@ def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
     if 'T_target' in cf.columns:
         cf['T_target'] = t_target
     else:
-        cf.insert(cf.columns.get_loc("T"), "T_target", t_target)
+        cf.insert(cf.columns.get_loc("T")+1, "T_target", t_target)
     return cf
 
 
