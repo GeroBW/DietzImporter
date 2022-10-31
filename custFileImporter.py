@@ -33,9 +33,9 @@ def main():
                 # res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv", index=False)
                 res.drop(['R_type'], axis=1).rename(columns={'T': 'T_old', 'T_target': 'T'}).to_excel(
                     f"out/{basename}/{basename}_{ext}_real.xlsx", index=False)
-
-                tmpDic.to_excel(
-                    f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
+                #
+                # tmpDic.to_excel(
+                #     f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
             else:
                 print(f'File type not supported.: {ext}')
 
@@ -64,7 +64,7 @@ def importCsv(path, skipInit: bool = False):
     replaceMu(path, tmp)
     file = pd.read_csv(tmp,
                        decimal='.',
-                       # delim_whitespace=True,
+                       delim_whitespace=True,
                        index_col=False,
                        header=None,
                        verbose=True,
@@ -316,6 +316,7 @@ def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
 
 def joinRow(row):
     matched_parts = dic[dic['T_source'] == row['T']]
+    if len(matched_parts) == 0: return None
     if len(matched_parts) == 1: return matched_parts['T_target'].item()
     if row['R_type']:
         res = matched_parts[matched_parts['R_type'] == row['R_type']]
