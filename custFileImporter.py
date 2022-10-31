@@ -30,8 +30,9 @@ def main():
                 if not os.path.exists(f'bibliothek/{basename}'):
                     os.mkdir(f'bibliothek/{basename}')
                 bom.to_excel(f"out/{basename}/{basename}_{ext}_real_BOM.xlsx")
-                res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv")
-                res.to_excel(f"out/{basename}/{basename}_{ext}_real.xlsx")
+                # res.to_csv(f"out/{basename}/{basename}_{ext}_real.csv", index=False)
+                res.drop(['R_type'], axis=1).rename(columns={'T': 'T_old', 'T_target': 'T'}).to_excel(
+                    f"out/{basename}/{basename}_{ext}_real.xlsx", index=False)
 
                 tmpDic.to_excel(
                     f"bibliothek/{basename}/{basename}_{ext}_tmpDic.xlsx")
@@ -140,19 +141,24 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
 
     print(res.head())
     userInput = input(
-        "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2)")
+        "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2), a: abort")
     if userInput in "yY":
         return res
     if userInput == "1":
         return res.iloc[1:]
     if userInput == "3":
         df = df.iloc[1:]
+    if userInput == "a":
+        exit("Process aborted")
     res = df
     print(f"initializing column names for {path}")
     print("Please specify columns that should be deleted by passing the corresponding column index")
     while True:
         print(res.head())
-        userInput = input("Delete column (i) or done(d):")
+        userInput = input("Delete column (i), done(d), abort:")
+        if userInput == "a":
+            exit("Process aborted")
+
         if userInput in "dD":
             break
         else:
@@ -161,6 +167,7 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
                 if userInput in res.columns:
                     if (input(f"Confirm deleting column {userInput} (y)") in "yY"):
                         res = res.drop(userInput, axis=1)
+
             except:
                 print("invalid entry")
                 continue
@@ -169,20 +176,22 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
     res.to_csv(targetPath, index=False, header=False, sep=' ')
     concatExcessColumns(targetPath, targetPath)
     res = pd.read_csv(targetPath,
-                       decimal='.',
-                       delim_whitespace=True,
-                       index_col=False,
-                       header=None,
-                       verbose=True,
-                       ).fillna('')
+                      decimal='.',
+                      delim_whitespace=True,
+                      index_col=False,
+                      header=None,
+                      verbose=True,
+                      ).fillna('')
     while True:
         print(res.head())
-        print("Please specify column order by passing the corresponding column index")
+        print("Please specify column order by passing the corresponding column index, abort: a")
         mapping = dict()
         for name in ['R', 'V', 'T', "Description"]:
             while True:
+                userInput = input(f"{name}:")
+                if userInput == "a": exit("Process aborted")
                 try:
-                    userInput = int(input(f"{name}:"))
+                    userInput = int(userInput)
                 except:
                     print("That's not an int!")
                     continue
@@ -194,8 +203,9 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
         res = res.rename(columns=mapping)
         print(f"this results in the following mapping:")
         print(mapping)
-        if (input("Correct? (y)") in "yY"):
-            break
+        userInput = input("Correct? (y), abort: a")
+        if userInput == "a": exit("Process aborted")
+        if (userInput in "yY"): break
     return res
 
 
@@ -259,21 +269,25 @@ def handleNotTranslated(translated: pd.DataFrame):
                                                                                                       as_index=False).agg(
             list)[['V', 'T', 'Description']]
     noMatch["Description"] = noMatch["Description"].map(lambda x: ', '.join(set(x)))
+    if not len(noMatch.index):
+        print("All parts where translated successfully.")
+        return translated, tmpDic
     print("No translation found for the following parts:")
     print(noMatch.to_string(index=False))
-    q = input('Start translation in program? (y)\n Alternatively, you can expand the bauform_bibliothek.xlsx\n')
-    # q = 'n'
+    q = input('Start translation in program? (y)\n Alternatively, you can expand the bauform_bibliothek.xlsx (enter)\n')
     if 'y' == q or 'Y' == q:
         for i in noMatch.index:
             notTrans = noMatch.loc[[i]]
             print(notTrans.to_string(index=False))
             q = input(
-                f"Choose option:\n\t1: Always translate this Part\n\t2: Translate for this file only\n\t3: skip this part\n\tq: save and exit translation mode\n")
+                f"Choose option:\n\t1: Always translate this Part\n\t2: Translate for this file only\n\t3: skip this part\n\tq: save and exit translation mode, a: abort\n")
+            if q == "a": exit("Process aborted")
+            if q == 'q': break
             if q == '1' or q == '2':
                 while True:
                     targetType = input(f"Enter correct part Name:")
                     yorN = input(f"entered '{targetType}'. Is this correct? (y)")
-                    if yorN == 'y' or yorN == 'Y':
+                    if yorN in 'yY':
                         if q == '1':
                             print(f"adding {notTrans['T']} -> {targetType} to dictionary.")
                             new_row = pd.DataFrame(data={"T_source": notTrans['T'], 'T_target': targetType})
@@ -284,8 +298,6 @@ def handleNotTranslated(translated: pd.DataFrame):
                         break
             if q == '3':
                 print('Skipping part')
-            if q == 'q':
-                break
     dic = pd.concat([dic, newEntries])
     translated = mapFile(translated, pd.concat([tmpDic, dic]))
     return translated, tmpDic
@@ -293,28 +305,26 @@ def handleNotTranslated(translated: pd.DataFrame):
 
 def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
     global dic
-    cf['R_type'] = cf['R'].str.replace('\d+', '').apply(lambda x: x if x == 'C' or x =='R' else '')
-    test = pd.merge(cf, dic,  how='left',left_on=['T'], right_on=['T_source'])
-    test = test.drop_duplicates(subset=['R', 'T_source', 'T_target'])
-
+    cf['R_type'] = cf['R'].str.replace(r'\d+', '', regex=True).apply(lambda x: x if x == 'C' or x == 'R' else '')
     t_target = cf.apply(joinRow, axis=1, result_type='reduce')
-    # t_target = cf['T']
     if 'T_target' in cf.columns:
         cf['T_target'] = t_target
     else:
         cf.insert(cf.columns.get_loc("T") + 1, "T_target", t_target)
     return cf
 
+
 def joinRow(row):
     matched_parts = dic[dic['T_source'] == row['T']]
     if len(matched_parts) == 1: return matched_parts['T_target'].item()
-    print("found conflicts:")
-    print(matched_parts)
     if row['R_type']:
         res = matched_parts[matched_parts['R_type'] == row['R_type']]
-        if len(res)==1: return res['T_target'].item()
+        if len(res) == 1:
+            return res['T_target'].item()
+        else:
+            print("found conflicts:")
+            print(matched_parts)
     return None
-
 
 
 def createBOM(df: pd.DataFrame):

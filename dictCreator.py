@@ -25,7 +25,7 @@ def main():
                                 trns = custFileImporter.importXlsx(os.path.join(root, fnameT), skipInit=True)
                                 createDict(src, trns, pd.read_excel(r'bibliothek/bauform_bibliothek.xlsx'))
                             except:
-                                warnings.warn(f"Skipped src {fnameS} with trns {fnameT} in {root}")
+                                # warnings.warn(f"Skipped src {fnameS} with trns {fnameT} in {root}")
                                 continue
             if fnameT == files[-1]:
                 path = os.path.join("out", 'processedProjects/', pathlib.PurePath(root).name)
