@@ -59,12 +59,14 @@ def custFileImporter(path: str):
     return bom, res, tmpDic
 
 
-def importCsv(path, skipInit: bool = False):
+def importCsv(src, skipInit: bool = False):
     tmp = "pre/preprocessed.csv"
-    replaceMu(path, tmp)
+    userInput = input("Are the CSV seperators whitespaces? y")
+    delimWhite = userInput in 'yY'
+    replaceMu(src, tmp)
     file = pd.read_csv(tmp,
                        decimal='.',
-                       delim_whitespace=True,
+                       delim_whitespace=delimWhite,
                        index_col=False,
                        header=None,
                        verbose=True,
@@ -74,7 +76,7 @@ def importCsv(path, skipInit: bool = False):
         mapping = dict(zip(range(7), columnGuesser(file)))
         return file.rename(columns=mapping)
     else:
-        return initTable(file, path, columnGuess=columnGuesser(file))
+        return initTable(file, src, columnGuess=columnGuesser(file))
 
 
 def importXlsx(path, skipInit: bool = False):
@@ -133,7 +135,7 @@ def columnGuesser(df: pd.DataFrame):
         return None
 
 
-def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
+def initTable(df: pd.DataFrame, src: str, columnGuess: list = None):
     res = df
     if columnGuess:
         mapping = dict(zip(range(7), columnGuess))
@@ -141,17 +143,17 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
 
     print(res.head())
     userInput = input(
-        "Are the Column Names and first Rows correct? y, 1: drop first row, 2: edit columns, 3: Do both (1 and 2), a: abort")
+        "y: Columns are correct, e: edit columns, a: abort")
     if userInput in "yY":
         return res
-    if userInput == "1":
-        return res.iloc[1:]
-    if userInput == "3":
-        df = df.iloc[1:]
+    # "1: drop first row, "
+    # if userInput == "1":
+    #     return res.iloc[1:]
+    #"3: Do both (1 and 2)"
+    # if userInput == "3": df = df.iloc[1:]
     if userInput == "a":
         exit("Process aborted")
     res = df
-    print(f"initializing column names for {path}")
     print("Please specify columns that should be deleted by passing the corresponding column index")
     while True:
         print(res.head())
@@ -182,6 +184,7 @@ def initTable(df: pd.DataFrame, path: str, columnGuess: list = None):
                       header=None,
                       verbose=True,
                       ).fillna('')
+
     while True:
         print(res.head())
         print("Please specify column order by passing the corresponding column index, abort: a")
@@ -227,10 +230,10 @@ def preprocessEagle(path):
         file.write('\n'.join(lines))
 
 
-def replaceMu(path, dest):
+def replaceMu(src, dest):
     data = ""
     ##todo ignore non data columns
-    with open(path, encoding="ISO-8859-1", ) as file:
+    with open(src, encoding="ISO-8859-1", ) as file:
         data = file.read() \
             .replace(",", ".") \
             .replace("µ", "u")
@@ -315,7 +318,7 @@ def mapFile(cf: pd.DataFrame, customDic: pd.DataFrame = dic):
 
 
 def joinRow(row):
-    matched_parts = dic[dic['T_source'] == row['T']]
+    matched_parts = dic[dic['T_source'] == str(row['T'])]
     if len(matched_parts) == 0: return None
     if len(matched_parts) == 1: return matched_parts['T_target'].item()
     if row['R_type']:
