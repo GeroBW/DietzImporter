@@ -40,7 +40,7 @@ def main():
                 print(f'File type not supported.: {ext}')
 
     # save updated dictionary
-    dic.to_excel("bibliothek/bauform_bibliothek.xlsx")
+    dic.to_excel("bibliothek/bauform_bibliothek.xlsx", index=None)
 
 
 def custFileImporter(path: str):
