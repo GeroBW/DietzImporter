@@ -63,6 +63,9 @@ def importCsv(src, skipInit: bool = False):
     tmp = "pre/preprocessed.csv"
     userInput = input("Are the CSV seperators whitespaces? y")
     delimWhite = userInput in 'yY'
+    delimiter = None
+    if not delimWhite:
+        delimiter = input("Please enter delimiter")
     replaceMu(src, tmp)
     file = pd.read_csv(tmp,
                        decimal='.',
@@ -70,6 +73,7 @@ def importCsv(src, skipInit: bool = False):
                        index_col=False,
                        header=None,
                        verbose=True,
+                       delimiter=delimiter
                        ).fillna('')
     # file = file.apply(lambda x: x.str.replace(',','.'))
     if skipInit:
