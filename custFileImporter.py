@@ -66,8 +66,7 @@ def importCsv(src, skipInit: bool = False):
     delimiter = None
     if not delimWhite:
         delimiter = input("Please enter delimiter")
-    replaceMu(src, tmp)
-    file = pd.read_csv(tmp,
+    file = pd.read_csv(src,
                        decimal='.',
                        delim_whitespace=delimWhite,
                        index_col=False,
@@ -75,7 +74,18 @@ def importCsv(src, skipInit: bool = False):
                        verbose=True,
                        delimiter=delimiter
                        ).fillna('')
+    file.to_csv(tmp, delimiter=' ')
+    replaceMu(tmp, tmp)
+    concatExcessColumns(tmp, tmp)
+    file = pd.read_csv(tmp,
+                       decimal='.',
+                       delim_whitespace=True,
+                       index_col=False,
+                       header=None,
+                       verbose=True,
+                       ).fillna('')
     # file = file.apply(lambda x: x.str.replace(',','.'))
+
     if skipInit:
         mapping = dict(zip(range(7), columnGuesser(file)))
         return file.rename(columns=mapping)
@@ -153,7 +163,7 @@ def initTable(df: pd.DataFrame, src: str, columnGuess: list = None):
     # "1: drop first row, "
     # if userInput == "1":
     #     return res.iloc[1:]
-    #"3: Do both (1 and 2)"
+    # "3: Do both (1 and 2)"
     # if userInput == "3": df = df.iloc[1:]
     if userInput == "a":
         exit("Process aborted")
