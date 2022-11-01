@@ -74,7 +74,7 @@ def importCsv(src, skipInit: bool = False):
                        verbose=True,
                        delimiter=delimiter
                        ).fillna('')
-    file.to_csv(tmp, delimiter=' ')
+    file.to_csv(tmp, sep=' ')
     replaceMu(tmp, tmp)
     concatExcessColumns(tmp, tmp)
     file = pd.read_csv(tmp,
@@ -165,9 +165,10 @@ def initTable(df: pd.DataFrame, src: str, columnGuess: list = None):
     #     return res.iloc[1:]
     # "3: Do both (1 and 2)"
     # if userInput == "3": df = df.iloc[1:]
-    if userInput == "a":
+    if userInput in "aA":
         exit("Process aborted")
     res = df
+
     print("Please specify columns that should be deleted by passing the corresponding column index")
     while True:
         print(res.head())
