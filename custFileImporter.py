@@ -61,7 +61,10 @@ def custFileImporter(path: str):
 
 def importCsv(src, skipInit: bool = False):
     tmp = "pre/preprocessed.csv"
-    replaceDoubleSlash(src, tmp)
+    userInput = input("Replace double slashes with comma? y")
+    rDoubleSlash = userInput in 'yY'
+    if rDoubleSlash:
+        replaceDoubleSlash(src, tmp)
     userInput = input("Are the CSV seperators whitespaces? y")
     delimWhite = userInput in 'yY'
     delimiter = None
