@@ -19,7 +19,7 @@ def main():
         for fname in files:
             path = os.path.join(root, fname)
             _, ext = os.path.splitext(path)
-            if ext in ['.mnt', '.mnb', '.csv', '.txt', '.xlsx']:
+            if ext.lower() in ['.mnt', '.mnb', '.csv', '.txt', '.xlsx']:
                 print(f'importing {path}')
                 bom, res, tmpDic = custFileImporter(path)
 
@@ -45,6 +45,7 @@ def main():
 
 def custFileImporter(path: str):
     _, ext = os.path.splitext(path)
+    ext = ext.lower()
     if ext == '.mnt' or ext == '.mnb':
         customerFile = importEagle(path)
     elif ext == '.csv' or ext == '.txt':
@@ -68,6 +69,7 @@ def importCsv(src, skipInit: bool = False):
     userInput = input("Are the CSV seperators whitespaces? y")
     delimWhite = userInput in 'yY'
     delimiter = None
+    replaceMu(tmp, tmp)
     if not delimWhite:
         delimiter = input("Please enter delimiter")
     file = pd.read_csv(tmp,
@@ -78,9 +80,8 @@ def importCsv(src, skipInit: bool = False):
                        verbose=True,
                        delimiter=delimiter
                        ).fillna('')
-    file.to_csv(tmp, sep=' ')
-    replaceMu(tmp, tmp)
-    concatExcessColumns(tmp, tmp)
+    file.to_csv(tmp, sep=' ', index=False, header=False)
+    # concatExcessColumns(tmp, tmp)
     file = pd.read_csv(tmp,
                        decimal='.',
                        delim_whitespace=True,
@@ -254,8 +255,17 @@ def replaceMu(src, dest):
     ##todo ignore non data columns
     with open(src, encoding="ISO-8859-1", ) as file:
         data = file.read() \
-            .replace(",", ".") \
             .replace("µ", "u")
+    with open(dest, "w+") as file:
+        file.write(data)
+    return dest
+
+def replaceWhiteSpace(src, dest):
+    data = ""
+    ##todo ignore non data columns
+    with open(src, encoding="ISO-8859-1", ) as file:
+        data = file.read() \
+            .replace(",", ".")
     with open(dest, "w+") as file:
         file.write(data)
     return dest
@@ -263,7 +273,7 @@ def replaceMu(src, dest):
 def replaceDoubleSlash(src, dest):
     with open(src, encoding="ISO-8859-1", ) as file:
         data = file.read() \
-            .replace("\\\\", '", "')
+            .replace("//", '","')
     with open(dest, "w+") as file:
         file.write(data)
 
