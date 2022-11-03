@@ -62,7 +62,7 @@ def createDict(src: pd.DataFrame, trns: pd.DataFrame, dictionaryOld: pd.DataFram
                        on=['R']).drop_duplicates(subset=['T_x', 'T_y'])
     matched = matched.rename(columns={'T_x': 'T_source', 'T_y': 'T_target'})
     matched = matched[matched.apply(lambda x: "n.b." not in x['T_target'] and "hand" not in x['T_target'] and "Hand" not in x['T_target'], axis = 1)]
-    matched["R_type"] = matched['R'].str.replace('\d+', '').apply(lambda x: x if x == 'C' or x =='R' else '')
+    matched["R_type"] = matched['R'].str.replace('\d+', '', regex=True).apply(lambda x: x if x == 'C' or x =='R' else '')
     matched = removeConflicts(matched)[['R_type','T_source', 'T_target']]
     newlines = matched[['R_type','T_source', 'T_target']]
     ### saving file

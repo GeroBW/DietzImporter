@@ -61,12 +61,13 @@ def custFileImporter(path: str):
 
 def importCsv(src, skipInit: bool = False):
     tmp = "pre/preprocessed.csv"
+    replaceDoubleSlash(src, tmp)
     userInput = input("Are the CSV seperators whitespaces? y")
     delimWhite = userInput in 'yY'
     delimiter = None
     if not delimWhite:
         delimiter = input("Please enter delimiter")
-    file = pd.read_csv(src,
+    file = pd.read_csv(tmp,
                        decimal='.',
                        delim_whitespace=delimWhite,
                        index_col=False,
@@ -256,6 +257,12 @@ def replaceMu(src, dest):
         file.write(data)
     return dest
 
+def replaceDoubleSlash(src, dest):
+    with open(src, encoding="ISO-8859-1", ) as file:
+        data = file.read() \
+            .replace("\\\\", '", "')
+    with open(dest, "w+") as file:
+        file.write(data)
 
 def concatExcessColumns(path, dest):
     with open(path, encoding="ISO-8859-1", ) as file:
